@@ -87,6 +87,78 @@ docker-compose -f quick-start.yaml logs -f hserver
 ```
 :::
 
+## Connect HStreamDB with HSTREAM CLI
+
+HStreamDB can be directly managed using the `hstream` command-line interface (CLI), which is included in the `hstreamdb/hstream` image.
+
+Start an instance of `hstreamdb/hstream` using Docker:
+
+```sh
+docker run -it --rm --name some-hstream-cli --network host hstreamdb/hstream:{{ $version() }} bash
+```
+
+### Create stream
+
+To create a stream, you can use `hstream stream create` command. Now we will create a stream with 2 shard
+
+```sh
+hstream stream create s1 --shards 2
+```
+
+```sh
++-------------+---------+----------------+-------------+
+| Stream Name | Replica | Retention Time | Shard Count |
++-------------+---------+----------------+-------------+
+| s1          | 1       | 604800 seconds | 2           |
++-------------+---------+----------------+-------------+
+```
+
+### Write data to streams
+
+The `hstream stream append` command can be used to write data to a stream.
+
+```sh
+hstream stream append s1 -p "{\"name\":\"Joe\",\"age\":12}" -p "{\"name\":\"Tom\",\"age\":13}" -j -k "key1"
+hstream stream append s1 -p "{\"name\":\"Ann\",\"age\":15}" -j
+```
+
+- The `-p` option is used to specify the data to be written. Multiple data can be written simultaneously, these data will be dispatched to HStreamDB in a single batch.
+- The `-j` option indicates that you are writing HRecords.
+- The `-k` option is used to specify a key for the record.
+
+For additional information, you can use `hstream stream append -h`.
+
+### Read data from a stream
+
+To read data from a particular stream, the `hstream stream read-stream` command is used.
+
+```sh
+hstream stream read-stream s1
+```
+
+```sh
+timestamp: "1691055754068", id: 1899972067469254-8589934594-0, key: "key1", record: {"age":12.0,"name":"Joe"}
+timestamp: "1691055754068", id: 1899972067469254-8589934594-1, key: "key1", record: {"age":13.0,"name":"Tom"}
+timestamp: "1691057010982", id: 1899972067469254-8589934595-0, key: "", record: {"age":15.0,"name":"Ann"}
+timestamp: "1691057030386", id: 1899972067469254-8589934596-0, key: "", record: {"age":25.0,"name":"Kite"}
+```
+
+You can also set a read offset, which can be one of the following types：
+
+- `earliest`: This seeks to the first record of the stream.
+- `latest`: This seeks to the end of the stream.
+- `timestamp`: This seeks to a record with a specific creation timestamp.
+
+For instance:
+
+```sh
+hstream stream read-stream s1 --from 1691057010982 --total 1
+```
+
+```sh
+timestamp: "1691057010982", id: 1899972067469254-8589934595-0, key: "", record: {"age":15.0,"name":"Ann"}
+```
+
 ## Start HStreamDB's interactive SQL CLI
 
 ```sh-vue

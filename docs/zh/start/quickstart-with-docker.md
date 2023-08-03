@@ -82,6 +82,80 @@ docker-compose -f quick-start.yaml logs -f hserver
 ```
 :::
 
+## 使用 HStream CLI 连接 HStreamDB
+
+可以直接使用 `hstream` 命令行接口（CLI）来管理 HStreamDB，该接口包含在 `hstreamdb/hstream` 镜像中。
+
+使用 Docker 启动 `hstreamdb/hstream` 实例：
+
+```sh
+docker run -it --rm --name some-hstream-cli --network host hstreamdb/hstream:{{ $version() }} bash
+```
+
+### 创建数据流
+
+使用 `hstream stream create` 命令来创建 stream。现在我们将创建一个包含2个 shard 的 stream。
+
+```sh
+hstream stream create s1 --shards 2
+```
+
+```sh
++-------------+---------+----------------+-------------+
+| Stream Name | Replica | Retention Time | Shard Count |
++-------------+---------+----------------+-------------+
+| s1          | 1       | 604800 seconds | 2           |
++-------------+---------+----------------+-------------+
+```
+
+### 向数据流中写入数据
+
+可以使用 `hstream stream append` 命令来向数据流中写入数据。
+
+```sh
+hstream stream append s1 -p "{\"name\":\"Joe\",\"age\":12}" -p "{\"name\":\"Tom\",\"age\":13}" -j -k "key1"
+hstream stream append s1 -p "{\"name\":\"Ann\",\"age\":15}" -j
+```
+
+其中：
+
+- `-p` 选项用于指定要写入的数据。可以同时写入多个数据，这些数据将作为一个 batch 被写到 HStreamDB。
+- `-j` 选项表示正在写入 HRecords。
+- `-k` 选项用于为记录指定 key。
+
+如需更多信息，可以使用 `hstream stream append -h`。
+
+### 从数据流中读取数据
+
+要从特定数据流中读取数据，可以使用 `hstream stream read-stream` 命令。
+
+```sh
+hstream stream read-stream s1
+```
+
+```sh
+timestamp: "1691055754068", id: 1899972067469254-8589934594-0, key: "key1", record: {"age":12.0,"name":"Joe"}
+timestamp: "1691055754068", id: 1899972067469254-8589934594-1, key: "key1", record: {"age":13.0,"name":"Tom"}
+timestamp: "1691057010982", id: 1899972067469254-8589934595-0, key: "", record: {"age":15.0,"name":"Ann"}
+timestamp: "1691057030386", id: 1899972067469254-8589934596-0, key: "", record: {"age":25.0,"name":"Kite"}
+```
+
+`read-stream` 命令 可以设置读取偏移量，可以有以下三种类型：
+
+- `earliest`：寻找到 stream 的第一条记录。
+- `latest`：寻找到 stream 的最后一条记录。
+- `timestamp`：寻找到指定创建时间戳的记录。
+
+例如：
+
+```sh
+hstream stream read-stream s1 --from 1691057010982 --total 1
+```
+
+```sh
+timestamp: "1691057010982", id: 1899972067469254-8589934595-0, key: "", record: {"age":15.0,"name":"Ann"}
+```
+
 ## 启动 HStreamDB 的 SQL 命令行界面
 
 ```sh-vue
